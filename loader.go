@@ -11,9 +11,9 @@ import (
 )
 
 const (
-	defaultPathPrefix                    = "untold"
-	defaultEnvironment                   = "development"
-	defaultPrivateKeyEnvironmentVariable = "UNTOLD_KEY"
+	DefaultPathPrefix          = "untold"
+	DefaultEnvironment         = "development"
+	DefaultEnvironmentVariable = "UNTOLD_KEY"
 )
 
 type Loader interface {
@@ -29,9 +29,9 @@ type loader struct {
 func NewLoader(files embed.FS, options ...Option) Loader {
 	l := loader{
 		embeddedFiles: files,
-		pathPrefix:    defaultPathPrefix,
-		environment:   defaultEnvironment,
-		privateKeyEnv: defaultPrivateKeyEnvironmentVariable,
+		pathPrefix:    DefaultPathPrefix,
+		environment:   DefaultEnvironment,
+		privateKeyEnv: DefaultEnvironmentVariable,
 	}
 
 	for i := range options {
