@@ -32,7 +32,7 @@ func (a *addCmd) Synopsis() string {
 }
 
 func (a *addCmd) Usage() string {
-	return `untold add-secret [-env={environment}] [secret_name]:
+	return `untold add-secret [-env={environment}] <secret_name>:
   Add new secret.
 `
 }

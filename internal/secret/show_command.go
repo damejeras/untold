@@ -33,12 +33,13 @@ func (s showCmd) Synopsis() string {
 }
 
 func (s showCmd) Usage() string {
-	return `untold show-secret [-env={environment}] [secret_name]:
+	return `untold show-secret [-env={environment}] [-key={decryption_key}] <secret_name>:
   Show decrypted secret value.
 `
 }
 
 func (s showCmd) SetFlags(f *flag.FlagSet) {
+	f.StringVar(&s.environment, "env", s.environment, "set environment")
 	f.StringVar(&s.privateKey, "key", s.privateKey, "provide decryption key")
 }
 
