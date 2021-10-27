@@ -27,7 +27,7 @@ func (c createCmd) Synopsis() string {
 }
 
 func (c createCmd) Usage() string {
-	return `new-env <environment_name>:
+	return `untold new-env <environment_name>:
   Create new environment.
 `
 }

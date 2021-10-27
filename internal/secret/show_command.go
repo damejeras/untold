@@ -33,7 +33,7 @@ func (s showCmd) Synopsis() string {
 }
 
 func (s showCmd) Usage() string {
-	return `show-secret [-env={environment}] [secret_name]:
+	return `untold show-secret [-env={environment}] [secret_name]:
   Show decrypted secret value.
 `
 }

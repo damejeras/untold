@@ -29,7 +29,7 @@ func (r rotateCmd) Synopsis() string {
 }
 
 func (r rotateCmd) Usage() string {
-	return `rotate-keys <environment_name>:
+	return `untold rotate-keys <environment_name>:
   Rotate environment keys.
 `
 }
