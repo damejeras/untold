@@ -20,28 +20,28 @@ type addCmd struct {
 }
 
 func NewAddCommand() subcommands.Command {
-	return &addCmd{environment: untold.DefaultEnvironment}
+	return addCmd{environment: untold.DefaultEnvironment}
 }
 
-func (a *addCmd) Name() string {
+func (a addCmd) Name() string {
 	return "add-secret"
 }
 
-func (a *addCmd) Synopsis() string {
+func (a addCmd) Synopsis() string {
 	return "add new secret"
 }
 
-func (a *addCmd) Usage() string {
+func (a addCmd) Usage() string {
 	return `untold add-secret [-env={environment}] <secret_name>:
   Add new secret.
 `
 }
 
-func (a *addCmd) SetFlags(f *flag.FlagSet) {
+func (a addCmd) SetFlags(f *flag.FlagSet) {
 	f.StringVar(&a.environment, "env", a.environment, "set environment")
 }
 
-func (a *addCmd) Execute(ctx context.Context, f *flag.FlagSet, args ...interface{}) subcommands.ExitStatus {
+func (a addCmd) Execute(ctx context.Context, f *flag.FlagSet, args ...interface{}) subcommands.ExitStatus {
 	name := f.Arg(0)
 	if name == "" {
 		cli.Errorf("argument \"name\" is required")
@@ -50,7 +50,7 @@ func (a *addCmd) Execute(ctx context.Context, f *flag.FlagSet, args ...interface
 		return subcommands.ExitUsageError
 	}
 
-	environment :=  a.environment
+	environment := a.environment
 	if environment == "" || environment == untold.DefaultEnvironment {
 		environment = untold.DefaultEnvironment
 		cli.Warnf("No environment provided, using default - \"%s\"", environment)

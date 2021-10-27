@@ -55,14 +55,14 @@ func (r rotateCmd) Execute(ctx context.Context, f *flag.FlagSet, args ...interfa
 		return subcommands.ExitUsageError
 	}
 
-	if _, err := os.Stat(environmentName+".public"); os.IsNotExist(err) {
+	if _, err := os.Stat(environmentName + ".public"); os.IsNotExist(err) {
 		cli.Errorf("public key for \"%s\" environment not found", environmentName)
 
 		return subcommands.ExitUsageError
 	}
 
 	if len(base64EncodedPrivateKey) == 0 {
-		if _, err := os.Stat(environmentName+".private"); os.IsNotExist(err) {
+		if _, err := os.Stat(environmentName + ".private"); os.IsNotExist(err) {
 			cli.Errorf("private key for \"%s\" environment not found", environmentName)
 
 			return subcommands.ExitUsageError

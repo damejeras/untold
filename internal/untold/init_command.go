@@ -21,30 +21,30 @@ type initCmd struct {
 }
 
 func NewInitCommand() subcommands.Command {
-	return &initCmd{
+	return initCmd{
 		environment: untold.DefaultEnvironment,
 	}
 }
 
-func (i *initCmd) Name() string {
+func (i initCmd) Name() string {
 	return "init"
 }
 
-func (i *initCmd) Synopsis() string {
+func (i initCmd) Synopsis() string {
 	return "initialize secrets vault."
 }
 
-func (i *initCmd) Usage() string {
+func (i initCmd) Usage() string {
 	return `untold init [-env={environment}] [directory_name]:
   Initialize secrets vault.
 `
 }
 
-func (i *initCmd) SetFlags(f *flag.FlagSet) {
+func (i initCmd) SetFlags(f *flag.FlagSet) {
 	f.StringVar(&i.environment, "env", i.environment, "set environment")
 }
 
-func (i *initCmd) Execute(ctx context.Context, f *flag.FlagSet, args ...interface{}) subcommands.ExitStatus {
+func (i initCmd) Execute(ctx context.Context, f *flag.FlagSet, args ...interface{}) subcommands.ExitStatus {
 	directory := f.Arg(0)
 	if directory == "" {
 		directory = untold.DefaultPathPrefix
