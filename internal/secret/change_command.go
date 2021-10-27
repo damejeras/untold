@@ -3,8 +3,10 @@ package secret
 import (
 	"context"
 	"crypto/md5"
+	"crypto/rand"
 	"encoding/hex"
 	"flag"
+	"fmt"
 	"github.com/damejeras/untold"
 	"github.com/damejeras/untold/internal/cli"
 	"github.com/google/subcommands"
@@ -13,53 +15,50 @@ import (
 	"path/filepath"
 )
 
-type showCmd struct {
+type changeCmd struct {
 	environment, privateKey string
 }
 
-func NewShowCommand() subcommands.Command {
-	return showCmd{
-		environment: untold.DefaultEnvironment,
-	}
+func NewChangeCommand() subcommands.Command {
+	return changeCmd{environment: untold.DefaultEnvironment}
 }
 
-
-func (s showCmd) Name() string {
-	return "show-secret"
+func (c changeCmd) Name() string {
+	return "change-secret"
 }
 
-func (s showCmd) Synopsis() string {
-	return "show secret's value"
+func (c changeCmd) Synopsis() string {
+	return "change secret's value"
 }
 
-func (s showCmd) Usage() string {
-	return `untold show-secret [-env={environment}] [-key={decryption_key}] <secret_name>:
-  Show decrypted secret value.
+func (c changeCmd) Usage() string {
+	return `untold change-secret [-env={environment}] [-key={decryption_key}] <secret_name>:
+  Change secret's value.
 `
 }
 
-func (s showCmd) SetFlags(f *flag.FlagSet) {
-	f.StringVar(&s.environment, "env", s.environment, "set environment")
-	f.StringVar(&s.privateKey, "key", s.privateKey, "provide decryption key")
+func (c changeCmd) SetFlags(f *flag.FlagSet) {
+	f.StringVar(&c.environment, "env", c.environment, "set environment")
+	f.StringVar(&c.privateKey, "key", c.privateKey, "provide decryption key")
 }
 
-func (s showCmd) Execute(ctx context.Context, f *flag.FlagSet, args ...interface{}) subcommands.ExitStatus {
+func (c changeCmd) Execute(ctx context.Context, f *flag.FlagSet, args ...interface{}) subcommands.ExitStatus {
 	name := f.Arg(0)
 	if name == "" {
 		cli.Errorf("argument \"name\" is required")
-		s.Usage()
+		c.Usage()
 
 		return subcommands.ExitUsageError
 	}
 
-	environment :=  s.environment
+	environment :=  c.environment
 	if environment == "" || environment == untold.DefaultEnvironment {
 		environment = untold.DefaultEnvironment
 		cli.Warnf("No environment provided, using default - \"%s\"", environment)
 	}
 
 	md5Hash := md5.Sum([]byte(name))
-	base64EncodedPrivateKey := []byte(s.privateKey)
+	base64EncodedPrivateKey := []byte(c.privateKey)
 
 	if _, err := os.Stat(filepath.Join(environment, hex.EncodeToString(md5Hash[:]))); os.IsNotExist(err) {
 		cli.Errorf("secret \"%s\" for \"%s\" environment not found", name, environment)
@@ -97,13 +96,6 @@ func (s showCmd) Execute(ctx context.Context, f *flag.FlagSet, args ...interface
 		}
 	}
 
-	base64EncodedContent, err := os.ReadFile(filepath.Join(environment, hex.EncodeToString(md5Hash[:])))
-	if err != nil {
-		cli.Wrapf(err, "read secret \"%s\" for \"%s\" environment", name, environment)
-
-		return subcommands.ExitFailure
-	}
-
 	decodedPublicKey, err := untold.Base64Decode(base64EncodedPublicKey)
 	if err != nil {
 		cli.Wrapf(err, "decode public key for \"%s\" environment", environment)
@@ -118,7 +110,6 @@ func (s showCmd) Execute(ctx context.Context, f *flag.FlagSet, args ...interface
 		return subcommands.ExitFailure
 	}
 
-	decodedContent, err := untold.Base64Decode(base64EncodedContent)
 	if err != nil {
 		cli.Wrapf(err, "decode secret \"%s\" key for \"%s\" environment", name, environment)
 
@@ -128,14 +119,35 @@ func (s showCmd) Execute(ctx context.Context, f *flag.FlagSet, args ...interface
 	var publicKey, privateKey [32]byte
 	copy(publicKey[:], decodedPublicKey)
 	copy(privateKey[:], decodedPrivateKey)
-	decryptedValue, ok := box.OpenAnonymous(nil, decodedContent, &publicKey, &privateKey)
-	if !ok {
-		cli.Errorf("can not decrypt secret \"%s\"", name)
+
+	fmt.Printf("Enter value for \"%s\" secret in \"%s\" environment:\n", name, environment)
+
+	var value string
+	_, err = fmt.Scanln(&value)
+	if err != nil {
+		cli.Wrapf(err, "read user input")
 
 		return subcommands.ExitFailure
 	}
 
-	cli.Successf("Secret's \"%s\" value is: %s", name, decryptedValue)
+
+	encryptedValue, err := box.SealAnonymous(nil, []byte(value), &publicKey, rand.Reader)
+	if err != nil {
+		cli.Wrapf(err, "encrypt user input")
+
+		return subcommands.ExitFailure
+	}
+
+	err = os.WriteFile(filepath.Join(environment, hex.EncodeToString(md5Hash[:])), untold.Base64Encode(encryptedValue), 0644)
+	if err != nil {
+		cli.Wrapf(err, "write secret \"%s\" for \"%s\" environment to file", name, environment)
+
+		return subcommands.ExitFailure
+	}
+
+	cli.Successf("Secret's \"%s\" value changed", name)
 
 	return subcommands.ExitSuccess
 }
+
+

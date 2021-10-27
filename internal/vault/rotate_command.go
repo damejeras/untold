@@ -47,6 +47,8 @@ func (r rotateCmd) Execute(ctx context.Context, f *flag.FlagSet, args ...interfa
 		return subcommands.ExitUsageError
 	}
 
+	base64EncodedPrivateKey := []byte(r.privateKey)
+
 	if _, err := os.Stat(environmentName); os.IsNotExist(err) {
 		cli.Errorf("directory for \"%s\" environment not found", environmentName)
 
@@ -59,10 +61,12 @@ func (r rotateCmd) Execute(ctx context.Context, f *flag.FlagSet, args ...interfa
 		return subcommands.ExitUsageError
 	}
 
-	if _, err := os.Stat(environmentName+".private"); os.IsNotExist(err) {
-		cli.Errorf("private key for \"%s\" environment not found", environmentName)
+	if len(base64EncodedPrivateKey) == 0 {
+		if _, err := os.Stat(environmentName+".private"); os.IsNotExist(err) {
+			cli.Errorf("private key for \"%s\" environment not found", environmentName)
 
-		return subcommands.ExitUsageError
+			return subcommands.ExitUsageError
+		}
 	}
 
 	base64EncodedPublicKey, err := os.ReadFile(environmentName + ".public")
@@ -71,8 +75,6 @@ func (r rotateCmd) Execute(ctx context.Context, f *flag.FlagSet, args ...interfa
 
 		return subcommands.ExitFailure
 	}
-
-	base64EncodedPrivateKey := []byte(r.privateKey)
 
 	if len(base64EncodedPrivateKey) == 0 {
 		base64EncodedPrivateKey, err = os.ReadFile(environmentName + ".private")
