@@ -1,0 +1,4 @@
+# private keys should not be stored in repository
+*.private
+# only development environment private keys can be in the repository
+!development.private

@@ -1,9 +1,10 @@
 package untold
 
 import (
-	"github.com/fatih/structtag"
 	"github.com/pkg/errors"
 	"reflect"
+	"strconv"
+	"strings"
 )
 
 var (
@@ -51,18 +52,13 @@ func doParse(reflection reflect.Value, resolve resolveFn) error {
 			continue
 		}
 
-		tags, err := structtag.Parse(string(reflectionType.Field(i).Tag))
-		if err != nil {
-			return err
-		}
-
-		tag, err := tags.Get("untold")
-		if err != nil {
+		name := tagName(reflectionType.Field(i).Tag, "untold")
+		if name == "" {
 			continue
 		}
 
 		if reflectionField.Kind() == reflect.String && reflectionField.CanSet() {
-			value, resolveErr := resolve(tag.Name)
+			value, resolveErr := resolve(name)
 			if resolveErr != nil {
 				return resolveErr
 			}
@@ -76,4 +72,71 @@ func doParse(reflection reflect.Value, resolve resolveFn) error {
 	}
 
 	return nil
+}
+
+// https://github.com/fatih/structtag/blob/master/tags.go
+func tagName(tag reflect.StructTag, target string) string {
+	for tag != "" {
+		// Skip leading space.
+		i := 0
+		for i < len(tag) && tag[i] == ' ' {
+			i++
+		}
+		tag = tag[i:]
+		if tag == "" {
+			break
+		}
+
+		// Scan to colon. A space, a quote or a control character is a syntax
+		// error. Strictly speaking, control chars include the range [0x7f,
+		// 0x9f], not just [0x00, 0x1f], but in practice, we ignore the
+		// multi-byte control characters as it is simpler to inspect the tag's
+		// bytes than the tag's runes.
+		i = 0
+		for i < len(tag) && tag[i] > ' ' && tag[i] != ':' && tag[i] != '"' && tag[i] != 0x7f {
+			i++
+		}
+
+		if i == 0 {
+			return ""
+		}
+		if i+1 >= len(tag) || tag[i] != ':' {
+			return ""
+		}
+		if tag[i+1] != '"' {
+			return ""
+		}
+
+		key := string(tag[:i])
+		tag = tag[i+1:]
+
+		// Scan quoted string to find value.
+		i = 1
+		for i < len(tag) && tag[i] != '"' {
+			if tag[i] == '\\' {
+				i++
+			}
+			i++
+		}
+		if i >= len(tag) {
+			return ""
+		}
+
+		qvalue := string(tag[:i+1])
+		tag = tag[i+1:]
+
+		value, err := strconv.Unquote(qvalue)
+		if err != nil {
+			return ""
+		}
+
+		res := strings.Split(value, ",")
+		name := res[0]
+
+		if key == target {
+			return name
+		}
+	}
+
+	return ""
 }
