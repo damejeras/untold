@@ -9,7 +9,7 @@ Encryption and decryption is possible thanks to [golang.org/x/crypto/nacl/box](h
 ## Installation & Usage
 
 ```
-$ go install github.com/damejeras/untold-cli@latest
+$ go install github.com/damejeras/untold/cmd/untold@v0.0.1-alpha
 
 $ untold init
 WARNING: Directory name not provided, using default - "untold"
