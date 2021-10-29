@@ -17,7 +17,7 @@ const (
 )
 
 type Vault interface {
-	LoadSecrets(interface{}) error
+	Load(interface{}) error
 }
 
 type vault struct {
@@ -41,7 +41,7 @@ func NewVault(files embed.FS, options ...Option) Vault {
 	return &v
 }
 
-func (v *vault) LoadSecrets(dst interface{}) error {
+func (v *vault) Load(dst interface{}) error {
 	if err := v.loadSecrets(); err != nil {
 		return err
 	}
