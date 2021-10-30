@@ -106,7 +106,7 @@ $ ./example
 ## Important
 Encrypted passwords are not completely secure. You should never store your passwords
 in public repositories, because bad actors can try to decrypt them.
-In case of source code leak you should rotate your keys immediately.
+In case of source code leak you should rotate your keys and secrets immediately.
 
 Never store private keys in your repository. Private key should be stored someplace secure
 and provided to the application within environment variable `UNTOLD_KEY`.
