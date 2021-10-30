@@ -1,14 +1,14 @@
 package untold
 
 import (
+	"errors"
 	"fmt"
-	"github.com/pkg/errors"
 	"reflect"
 	"strings"
 )
 
 var (
-	ErrNotAPointer = errors.Errorf("expected pointer to a Struct")
+	ErrNotAPointer = errors.New("expected pointer to a Struct")
 )
 
 type resolveFn func(name string) (string, error)
@@ -68,14 +68,13 @@ func doParse(reflection reflect.Value, resolve resolveFn) error {
 			continue
 		}
 
-		return errors.Errorf("tag \"untold\" works only with strings. used on %s", reflectionField.Type())
+		return fmt.Errorf("tag \"untold\" works only with strings. used on %q", reflectionField.Type())
 	}
 
 	return nil
 }
 
 func tagName(tag reflect.StructTag, target string) string {
-	fmt.Println(string(tag))
 	tags := strings.Split(string(tag), " ")
 	if len(tags) == 0 {
 		return ""

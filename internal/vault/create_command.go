@@ -14,19 +14,13 @@ import (
 
 type createCmd struct {}
 
-func NewCreateCommand() subcommands.Command {
-	return createCmd{}
-}
+func NewCreateCommand() subcommands.Command { return &createCmd{} }
 
-func (c createCmd) Name() string {
-	return "new-env"
-}
+func (c *createCmd) Name() string { return "new-env" }
 
-func (c createCmd) Synopsis() string {
-	return "create new environment"
-}
+func (c *createCmd) Synopsis() string { return "create new environment" }
 
-func (c createCmd) Usage() string {
+func (c *createCmd) Usage() string {
 	return `untold new-env <environment_name>:
   Create new environment.
 `
@@ -44,31 +38,31 @@ func (c createCmd) Execute(ctx context.Context, f *flag.FlagSet, args ...interfa
 	}
 
 	if _, err := os.Stat(environmentName); !os.IsNotExist(err) {
-		cli.Errorf("directory \"%s\" already exists", environmentName)
+		cli.Errorf("directory %q already exists", environmentName)
 
 		return subcommands.ExitUsageError
 	}
 
 	if _, err := os.Stat(environmentName+".public"); !os.IsNotExist(err) {
-		cli.Errorf("file \"%s\" already exists", environmentName+".public")
+		cli.Errorf("file %q already exists", environmentName+".public")
 
 		return subcommands.ExitUsageError
 	}
 
 	if _, err := os.Stat(environmentName+".private"); !os.IsNotExist(err) {
-		cli.Errorf("file \"%s\" already exists", environmentName+".private")
+		cli.Errorf("file %q already exists", environmentName+".private")
 
 		return subcommands.ExitUsageError
 	}
 
 	if err := os.Mkdir(environmentName, 0755); err != nil {
-		cli.Wrapf(err, "create directory \"%s\"", environmentName)
+		cli.Wrapf(err, "create directory %q", environmentName)
 
 		return subcommands.ExitFailure
 	}
 
 	if err := os.WriteFile(filepath.Join(environmentName, ".gitkeep"), []byte("*"), 0644); err != nil {
-		cli.Wrapf(err, "create .gitkeep file for \"%s\" environment", environmentName)
+		cli.Wrapf(err, "create .gitkeep file for %q environment", environmentName)
 
 		return subcommands.ExitFailure
 	}
@@ -81,18 +75,18 @@ func (c createCmd) Execute(ctx context.Context, f *flag.FlagSet, args ...interfa
 	}
 
 	if err := os.WriteFile(filepath.Join(environmentName+".public"), untold.Base64Encode(publicKey[:]), 0644); err != nil {
-		cli.Wrapf(err, "write public key for environment \"%s\"", environmentName)
+		cli.Wrapf(err, "write public key for environment %q", environmentName)
 
 		return subcommands.ExitFailure
 	}
 
 	if err := os.WriteFile(filepath.Join(environmentName+".private"), untold.Base64Encode(privateKey[:]), 0644); err != nil {
-		cli.Wrapf(err, "write private key for environment \"%s\"", environmentName)
+		cli.Wrapf(err, "write private key for environment %q", environmentName)
 
 		return subcommands.ExitFailure
 	}
 
-	cli.Successf("Environment \"%s\" created.", environmentName)
+	cli.Successf("Environment %q created.", environmentName)
 
 	return subcommands.ExitSuccess
 }

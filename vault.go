@@ -4,7 +4,7 @@ import (
 	"crypto/md5"
 	"embed"
 	"encoding/hex"
-	"github.com/pkg/errors"
+	"fmt"
 	"golang.org/x/crypto/nacl/box"
 	"os"
 	"path/filepath"
@@ -16,6 +16,10 @@ const (
 	DefaultEnvironmentVariable = "UNTOLD_KEY"
 )
 
+var (
+	zeroKey [32]byte
+)
+
 type Vault interface {
 	Load(interface{}) error
 }
@@ -23,7 +27,7 @@ type Vault interface {
 type vault struct {
 	embeddedFiles                          embed.FS
 	pathPrefix, environment, privateKeyEnv string
-	publicKey, privateKey                  []byte
+	publicKey, privateKey                  [32]byte
 }
 
 func NewVault(files embed.FS, options ...Option) Vault {
@@ -32,6 +36,8 @@ func NewVault(files embed.FS, options ...Option) Vault {
 		pathPrefix:    DefaultPathPrefix,
 		environment:   DefaultEnvironment,
 		privateKeyEnv: DefaultEnvironmentVariable,
+		privateKey:    zeroKey,
+		publicKey:     zeroKey,
 	}
 
 	for i := range options {
@@ -50,39 +56,31 @@ func (v *vault) Load(dst interface{}) error {
 }
 
 func (v *vault) loadSecrets() error {
-	if v.privateKey != nil || v.publicKey != nil {
+	if v.privateKey != zeroKey || v.publicKey != zeroKey {
 		return nil
 	}
 
 	base64PublicKey, err := v.embeddedFiles.ReadFile(filepath.Join(v.pathPrefix, v.environment+".public"))
 	if err != nil {
-		if os.IsNotExist(err) {
-			return errors.Errorf("public key for \"%s\" environment not found", v.environment)
-		}
-
-		return errors.Wrapf(err, "read public key file for \"%s\" environment", v.environment)
+		return fmt.Errorf("read public key file for %q environment: %s", v.environment, err)
 	}
 
 	base64PrivateKey := []byte(os.Getenv(v.privateKeyEnv))
 	if len(base64PrivateKey) == 0 {
 		base64PrivateKey, err = v.embeddedFiles.ReadFile(filepath.Join(v.pathPrefix, v.environment+".private"))
 		if err != nil {
-			if os.IsNotExist(err) {
-				return errors.Errorf("can not find private key for environment \"%s\"", v.environment)
-			}
-
-			return errors.Wrapf(err, "read private key file for \"%s\" environment", v.environment)
+			return fmt.Errorf("read private key file for %q environment: %s", v.environment, err)
 		}
 	}
 
-	v.publicKey, err = Base64Decode(base64PublicKey)
+	v.publicKey, err = DecodeBase64Key(base64PublicKey)
 	if err != nil {
-		return errors.Wrap(err, "base64 decode public key")
+		return fmt.Errorf("decode base64 encoded public key: %s", err)
 	}
 
-	v.privateKey, err = Base64Decode(base64PrivateKey)
+	v.privateKey, err = DecodeBase64Key(base64PrivateKey)
 	if err != nil {
-		return errors.Wrapf(err, "base64 decode private key")
+		return fmt.Errorf("decode base64 encoded private key: %s", err)
 	}
 
 	return nil
@@ -94,24 +92,20 @@ func (v *vault) findSecret(name string) (string, error) {
 	base64EncodedSecret, err := v.embeddedFiles.ReadFile(filepath.Join(v.pathPrefix, v.environment, hex.EncodeToString(md5Hash[:])))
 	if err != nil {
 		if os.IsNotExist(err) {
-			return "", errors.Errorf("secret \"%s\" for \"%s\" environemnt not found", name, v.environment)
+			return "", fmt.Errorf("secret %q for %q environemnt not found", name, v.environment)
 		}
 
-		return "", errors.Wrapf(err, "get secret for \"%s\" for \"%s\" environment", name, v.environment)
+		return "", fmt.Errorf("get secret for %q for %q environment: %s", name, v.environment, err)
 	}
 
 	decodedSecret, err := Base64Decode(base64EncodedSecret)
 	if err != nil {
-		return "", errors.Wrapf(err, "base64 decode \"%s\" for \"%s\" environment", name, v.environment)
+		return "", fmt.Errorf("base64 decode %q for %q environment: %s", name, v.environment, err)
 	}
 
-	var publicKey, privateKey [32]byte
-	copy(publicKey[:], v.publicKey)
-	copy(privateKey[:], v.privateKey)
-
-	decrypted, ok := box.OpenAnonymous(nil, decodedSecret, &publicKey, &privateKey)
+	decrypted, ok := box.OpenAnonymous(nil, decodedSecret, &v.publicKey, &v.privateKey)
 	if !ok {
-		return "", errors.Errorf("can not decrypt secret \"%s\" for \"%s\" environemnt", name, v.environment)
+		return "", fmt.Errorf("can not decrypt secret %q for %q environemnt: %s", name, v.environment, err)
 	}
 
 	return string(decrypted), nil

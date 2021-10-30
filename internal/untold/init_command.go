@@ -20,51 +20,43 @@ type initCmd struct {
 	environment string
 }
 
-func NewInitCommand() subcommands.Command {
-	return initCmd{
-		environment: untold.DefaultEnvironment,
-	}
-}
+func NewInitCommand() subcommands.Command { return &initCmd{ environment: untold.DefaultEnvironment } }
 
-func (i initCmd) Name() string {
-	return "init"
-}
+func (i *initCmd) Name() string { return "init" }
 
-func (i initCmd) Synopsis() string {
-	return "initialize secrets vault."
-}
+func (i *initCmd) Synopsis() string { return "initialize secrets vault." }
 
-func (i initCmd) Usage() string {
+func (i *initCmd) Usage() string {
 	return `untold init [-env={environment}] [directory_name]:
   Initialize secrets vault.
 `
 }
 
-func (i initCmd) SetFlags(f *flag.FlagSet) {
+func (i *initCmd) SetFlags(f *flag.FlagSet) {
 	f.StringVar(&i.environment, "env", i.environment, "set environment")
 }
 
-func (i initCmd) Execute(ctx context.Context, f *flag.FlagSet, args ...interface{}) subcommands.ExitStatus {
+func (i *initCmd) Execute(ctx context.Context, f *flag.FlagSet, args ...interface{}) subcommands.ExitStatus {
 	directory := f.Arg(0)
 	if directory == "" {
 		directory = untold.DefaultPathPrefix
-		cli.Warnf("Directory name not provided, using default - \"%s\"", directory)
+		cli.Warnf("Directory name not provided, using default - %q", directory)
 	}
 
 	environment := i.environment
 	if environment == "" || environment == untold.DefaultEnvironment {
 		environment = untold.DefaultEnvironment
-		cli.Warnf("No environment provided, using default - \"%s\"", environment)
+		cli.Warnf("No environment provided, using default - %q", environment)
 	}
 
 	if _, err := os.Stat(directory); !os.IsNotExist(err) {
-		cli.Errorf("directory \"%s\" already exists", directory)
+		cli.Errorf("directory %q already exists", directory)
 
 		return subcommands.ExitUsageError
 	}
 
 	if err := os.Mkdir(directory, 0755); err != nil {
-		cli.Wrapf(err, "create directory \"%s\"", directory)
+		cli.Wrapf(err, "create directory %q", directory)
 
 		return subcommands.ExitFailure
 	}
@@ -98,13 +90,13 @@ func (i initCmd) Execute(ctx context.Context, f *flag.FlagSet, args ...interface
 	}
 
 	if err := os.Mkdir(filepath.Join(directory, environment), 0755); err != nil {
-		cli.Wrapf(err, "create environment \"%s\" directory", environment)
+		cli.Wrapf(err, "create environment %q directory", environment)
 
 		return subcommands.ExitFailure
 	}
 
 	if err := os.WriteFile(filepath.Join(directory, environment, ".gitkeep"), []byte("*"), 0644); err != nil {
-		cli.Wrapf(err, "create .gitkeep file for \"%s\" environment", environment)
+		cli.Wrapf(err, "create .gitkeep file for %q environment", environment)
 
 		return subcommands.ExitFailure
 	}
@@ -117,18 +109,18 @@ func (i initCmd) Execute(ctx context.Context, f *flag.FlagSet, args ...interface
 	}
 
 	if err := os.WriteFile(filepath.Join(directory, environment+".public"), untold.Base64Encode(publicKey[:]), 0644); err != nil {
-		cli.Wrapf(err, "write public key for environment \"%s\"", environment)
+		cli.Wrapf(err, "write public key for environment %q", environment)
 
 		return subcommands.ExitFailure
 	}
 
 	if err := os.WriteFile(filepath.Join(directory, environment+".private"), untold.Base64Encode(privateKey[:]), 0644); err != nil {
-		cli.Wrapf(err, "write private key for environment \"%s\"", environment)
+		cli.Wrapf(err, "write private key for environment %q", environment)
 
 		return subcommands.ExitFailure
 	}
 
-	cli.Successf("Vault structure with \"%s\" environment initialized.\n", environment)
+	cli.Successf("Vault structure with %q environment initialized.\n", environment)
 
 	return subcommands.ExitSuccess
 }

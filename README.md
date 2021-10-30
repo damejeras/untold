@@ -6,10 +6,12 @@ add new secrets without a need of external secret management tool.
 
 Encryption and decryption is possible thanks to [golang.org/x/crypto/nacl/box](https://golang.org/x/crypto/nacl/box) package.
 
+Go version 1.16 or later is required.
+
 ## Installation & Usage
 
 ```
-$ go install github.com/damejeras/untold/cmd/untold@v0.0.1-alpha
+$ go install github.com/damejeras/untold/cmd/untold@v0.0.2-alpha
 
 $ untold init
 WARNING: Directory name not provided, using default - "untold"
@@ -40,7 +42,7 @@ $ cd ..
 
 $ go mod init example
 
-$ go get github.com/damejeras/untold
+$ go get github.com/damejeras/untold@v0.0.2-alpha
 
 $ touch main.go
 ```
@@ -109,3 +111,7 @@ In case of source code leak you should rotate your keys immediately.
 Never store private keys in your repository. Private key should be stored someplace secure
 and provided to the application within environment variable `UNTOLD_KEY`.
 Only exception is your local development environment private key.
+
+This library does not obfuscate your secrets. If you distribute binaries of your application
+be aware, that encrypted secrets can be found in the binary with simple `grep -a` command.
+This library was built with web services in mind.

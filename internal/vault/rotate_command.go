@@ -17,28 +17,23 @@ type rotateCmd struct {
 	privateKey string
 }
 
-func NewRotateCommand() subcommands.Command {
-	return rotateCmd{}
-}
-func (r rotateCmd) Name() string {
-	return "rotate-keys"
-}
+func NewRotateCommand() subcommands.Command { return &rotateCmd{}}
 
-func (r rotateCmd) Synopsis() string {
-	return "rotate environment keys"
-}
+func (r *rotateCmd) Name() string { return "rotate-keys" }
 
-func (r rotateCmd) Usage() string {
+func (r *rotateCmd) Synopsis() string { return "rotate environment keys" }
+
+func (r *rotateCmd) Usage() string {
 	return `untold rotate-keys <environment_name>:
   Rotate environment keys.
 `
 }
 
-func (r rotateCmd) SetFlags(f *flag.FlagSet) {
+func (r *rotateCmd) SetFlags(f *flag.FlagSet) {
 	f.StringVar(&r.privateKey, "key", r.privateKey, "provide decryption key")
 }
 
-func (r rotateCmd) Execute(ctx context.Context, f *flag.FlagSet, args ...interface{}) subcommands.ExitStatus {
+func (r *rotateCmd) Execute(ctx context.Context, f *flag.FlagSet, args ...interface{}) subcommands.ExitStatus {
 	environmentName := f.Arg(0)
 	if environmentName == "" {
 		cli.Errorf("argument \"environment_name\" is required")
@@ -50,20 +45,20 @@ func (r rotateCmd) Execute(ctx context.Context, f *flag.FlagSet, args ...interfa
 	base64EncodedPrivateKey := []byte(r.privateKey)
 
 	if _, err := os.Stat(environmentName); os.IsNotExist(err) {
-		cli.Errorf("directory for \"%s\" environment not found", environmentName)
+		cli.Errorf("directory for %q environment not found", environmentName)
 
 		return subcommands.ExitUsageError
 	}
 
 	if _, err := os.Stat(environmentName + ".public"); os.IsNotExist(err) {
-		cli.Errorf("public key for \"%s\" environment not found", environmentName)
+		cli.Errorf("public key for %q environment not found", environmentName)
 
 		return subcommands.ExitUsageError
 	}
 
 	if len(base64EncodedPrivateKey) == 0 {
 		if _, err := os.Stat(environmentName + ".private"); os.IsNotExist(err) {
-			cli.Errorf("private key for \"%s\" environment not found", environmentName)
+			cli.Errorf("private key for %q environment not found", environmentName)
 
 			return subcommands.ExitUsageError
 		}
@@ -71,7 +66,7 @@ func (r rotateCmd) Execute(ctx context.Context, f *flag.FlagSet, args ...interfa
 
 	base64EncodedPublicKey, err := os.ReadFile(environmentName + ".public")
 	if err != nil {
-		cli.Wrapf(err, "read public key for \"%s\" environment", environmentName)
+		cli.Wrapf(err, "read public key for %q environment", environmentName)
 
 		return subcommands.ExitFailure
 	}
@@ -79,33 +74,31 @@ func (r rotateCmd) Execute(ctx context.Context, f *flag.FlagSet, args ...interfa
 	if len(base64EncodedPrivateKey) == 0 {
 		base64EncodedPrivateKey, err = os.ReadFile(environmentName + ".private")
 		if err != nil {
-			cli.Wrapf(err, "read private key for \"%s\" environment", environmentName)
+			cli.Wrapf(err, "read private key for %q environment", environmentName)
 
 			return subcommands.ExitFailure
 		}
 	}
 
-	decodedPublicKey, err := untold.Base64Decode(base64EncodedPublicKey)
-	if err != nil {
-		cli.Wrapf(err, "decode public key for \"%s\" environment", environmentName)
-
-		return subcommands.ExitFailure
-	}
-
-	decodedPrivateKey, err := untold.Base64Decode(base64EncodedPrivateKey)
-	if err != nil {
-		cli.Wrapf(err, "decode private key for \"%s\" environment", environmentName)
-
-		return subcommands.ExitFailure
-	}
-
 	var publicKey, privateKey [32]byte
-	copy(publicKey[:], decodedPublicKey)
-	copy(privateKey[:], decodedPrivateKey)
+
+	publicKey, err = untold.DecodeBase64Key(base64EncodedPublicKey)
+	if err != nil {
+		cli.Wrapf(err, "decode base64 encoded public key for %q environment", environmentName)
+
+		return subcommands.ExitFailure
+	}
+
+	privateKey, err = untold.DecodeBase64Key(base64EncodedPrivateKey)
+	if err != nil {
+		cli.Wrapf(err, "decode base64 encoded private key for %q environment", environmentName)
+
+		return subcommands.ExitFailure
+	}
 
 	files, err := ioutil.ReadDir(environmentName)
 	if err != nil {
-		cli.Wrapf(err, "read environment \"%s\" secrets", environmentName)
+		cli.Wrapf(err, "read environment %q secrets", environmentName)
 
 		return subcommands.ExitFailure
 	}
@@ -120,21 +113,21 @@ func (r rotateCmd) Execute(ctx context.Context, f *flag.FlagSet, args ...interfa
 
 		base64EncodedSecret, err := os.ReadFile(filepath.Join(environmentName, file.Name()))
 		if err != nil {
-			cli.Wrapf(err, "read \"%s\" file", filepath.Join(environmentName, file.Name()))
+			cli.Wrapf(err, "read %q file", filepath.Join(environmentName, file.Name()))
 
 			return subcommands.ExitFailure
 		}
 
 		decodedSecret, err := untold.Base64Decode(base64EncodedSecret)
 		if err != nil {
-			cli.Wrapf(err, "decode secret \"%s\"", file.Name())
+			cli.Wrapf(err, "decode secret %q", file.Name())
 
 			return subcommands.ExitFailure
 		}
 
 		decryptedSecret, ok := box.OpenAnonymous(nil, decodedSecret, &publicKey, &privateKey)
 		if !ok {
-			cli.Errorf("can not decode secret \"%s\"", file.Name())
+			cli.Errorf("can not decode secret %q", file.Name())
 
 			return subcommands.ExitFailure
 		}
@@ -152,14 +145,14 @@ func (r rotateCmd) Execute(ctx context.Context, f *flag.FlagSet, args ...interfa
 	for filename, value := range values {
 		encryptedValue, err := box.SealAnonymous(nil, []byte(value), newPublicKey, rand.Reader)
 		if err != nil {
-			cli.Wrapf(err, "encrypt \"%s\" value", filename)
+			cli.Wrapf(err, "encrypt %q value", filename)
 
 			return subcommands.ExitFailure
 		}
 
 		err = os.WriteFile(filepath.Join(environmentName, filename), untold.Base64Encode(encryptedValue), 0644)
 		if err != nil {
-			cli.Wrapf(err, "write encrypted value to \"%s\"", filename)
+			cli.Wrapf(err, "write encrypted value to %q", filename)
 
 			return subcommands.ExitFailure
 		}
@@ -177,7 +170,7 @@ func (r rotateCmd) Execute(ctx context.Context, f *flag.FlagSet, args ...interfa
 		return subcommands.ExitFailure
 	}
 
-	cli.Successf("Keys for environment \"%s\" rotated", environmentName)
+	cli.Successf("Keys for environment %q rotated", environmentName)
 
 	return subcommands.ExitSuccess
 }
