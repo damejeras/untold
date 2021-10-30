@@ -11,7 +11,7 @@ Go version 1.16 or later is required.
 ## Installation & Usage
 
 ```
-$ go install github.com/damejeras/untold/cmd/untold@v0.0.2-alpha
+$ go install github.com/damejeras/untold/cmd/untold@v0.0.3-alpha
 
 $ untold init
 WARNING: Directory name not provided, using default - "untold"
@@ -42,7 +42,7 @@ $ cd ..
 
 $ go mod init example
 
-$ go get github.com/damejeras/untold@v0.0.2-alpha
+$ go get github.com/damejeras/untold@v0.0.3-alpha
 
 $ touch main.go
 ```

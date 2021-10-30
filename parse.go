@@ -1,95 +1,53 @@
 package untold
 
 import (
-	"errors"
 	"fmt"
 	"reflect"
-	"strings"
-)
-
-var (
-	ErrNotAPointer = errors.New("expected pointer to a Struct")
 )
 
 type resolveFn func(name string) (string, error)
 
 func parse(dst interface{}, resolve resolveFn) error {
 	pointerReflection := reflect.ValueOf(dst)
-	if pointerReflection.Kind() != reflect.Ptr {
-		return ErrNotAPointer
+	if pointerReflection.Kind() != reflect.Ptr || pointerReflection.Elem().Kind() != reflect.Struct {
+		return fmt.Errorf("target must be a pointer to struct")
 	}
 
-	reflection := pointerReflection.Elem()
-	if reflection.Kind() != reflect.Struct {
-		return ErrNotAPointer
-	}
-
-	return doParse(reflection, resolve)
+	return parseRecursively(pointerReflection, resolve)
 }
 
-func doParse(reflection reflect.Value, resolve resolveFn) error {
-	reflectionType := reflection.Type()
+func parseRecursively(reflection reflect.Value, resolve resolveFn) error {
+	if reflection.Kind() == reflect.Ptr {
+		reflection = reflection.Elem()
+	}
 
-	for i := 0; i < reflectionType.NumField(); i++ {
+	for i := 0; i < reflection.Type().NumField(); i++ {
 		reflectionField := reflection.Field(i)
 		if !reflectionField.CanSet() {
 			continue
 		}
 
-		if reflectionField.Kind() == reflect.Ptr && !reflectionField.IsNil() {
-			err := parse(reflectionField.Interface(), resolve)
-			if err != nil {
-				return err
+		switch {
+		case reflectionField.Kind() == reflect.Ptr && !reflectionField.Addr().IsNil() && reflectionField.CanAddr():
+			if err := parseRecursively(reflectionField, resolve); err != nil {
+				return fmt.Errorf("%q: %v", reflection.Type().Field(i).Name, err)
 			}
-			continue
-		}
-
-		if reflectionField.Kind() == reflect.Struct && reflectionField.CanAddr() && reflectionField.Type().Name() == "" {
-			err := parse(reflectionField.Addr().Interface(), resolve)
-			if err != nil {
-				return err
+		case reflectionField.Kind() == reflect.Struct:
+			if err := parseRecursively(reflectionField, resolve); err != nil {
+				return fmt.Errorf("%q: %v", reflection.Type().Field(i).Name, err)
 			}
-			continue
-		}
-
-		name := tagName(reflectionType.Field(i).Tag, "untold")
-		if name == "" {
-			continue
-		}
-
-		if reflectionField.Kind() == reflect.String && reflectionField.CanSet() {
-			value, resolveErr := resolve(name)
+		case reflectionField.Kind() == reflect.String:
+			tagValue := reflection.Type().Field(i).Tag.Get("untold")
+			value, resolveErr := resolve(tagValue)
 			if resolveErr != nil {
-				return resolveErr
+				return fmt.Errorf("%q: resolve %q: %v", reflection.Type().Field(i).Name, tagValue, resolveErr)
 			}
 
-			reflectionField.SetString(value)
-
-			continue
+			if value != "" {
+				reflectionField.SetString(value)
+			}
 		}
-
-		return fmt.Errorf("tag \"untold\" works only with strings. used on %q", reflectionField.Type())
 	}
 
 	return nil
-}
-
-func tagName(tag reflect.StructTag, target string) string {
-	tags := strings.Split(string(tag), " ")
-	if len(tags) == 0 {
-		return ""
-	}
-
-	for i := range tags {
-		tagParts := strings.Split(tags[i], ":")
-		if len(tagParts) != 2 {
-			return ""
-		}
-
-		if tagParts[0] == target {
-			return strings.Trim(tagParts[1], "\"")
-		}
-	}
-
-	return ""
 }
