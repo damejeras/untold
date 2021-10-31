@@ -48,14 +48,14 @@ func NewVault(files embed.FS, options ...Option) Vault {
 }
 
 func (v *vault) Load(dst interface{}) error {
-	if err := v.loadSecrets(); err != nil {
+	if err := v.loadKeys(); err != nil {
 		return err
 	}
 
 	return parse(dst, v.findSecret)
 }
 
-func (v *vault) loadSecrets() error {
+func (v *vault) loadKeys() error {
 	if v.privateKey != zeroKey || v.publicKey != zeroKey {
 		return nil
 	}
@@ -92,7 +92,7 @@ func (v *vault) findSecret(name string) (string, error) {
 	base64EncodedSecret, err := v.embeddedFiles.ReadFile(filepath.Join(v.pathPrefix, v.environment, hex.EncodeToString(md5Hash[:])))
 	if err != nil {
 		if os.IsNotExist(err) {
-			return "", fmt.Errorf("secret %q for %q environemnt not found", name, v.environment)
+			return "", fmt.Errorf("secret %q for %q environment not found", name, v.environment)
 		}
 
 		return "", fmt.Errorf("get secret for %q for %q environment: %s", name, v.environment, err)
@@ -105,7 +105,7 @@ func (v *vault) findSecret(name string) (string, error) {
 
 	decrypted, ok := box.OpenAnonymous(nil, decodedSecret, &v.publicKey, &v.privateKey)
 	if !ok {
-		return "", fmt.Errorf("can not decrypt secret %q for %q environemnt: %s", name, v.environment, err)
+		return "", fmt.Errorf("can not decrypt secret %q for %q environment", name, v.environment)
 	}
 
 	return string(decrypted), nil
